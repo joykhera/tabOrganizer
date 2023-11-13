@@ -1,12 +1,20 @@
-import { getAllTabs } from "./utils.js";
+import { getAllTabs, getActiveTabURL } from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const organizeTabsButton = document.getElementById("organizeTabsButton");
     const revertTabsButton = document.getElementById("revertTabsButton");
 
     organizeTabsButton.addEventListener("click", async () => {
+        const activeTabURL = await getActiveTabURL();
         const allTabs = await getAllTabs();
         await organizeTabs(allTabs);
+
+        const d = await organizeTabs(allTabs);
+
+        chrome.tabs.sendMessage(activeTabURL.id, {
+            type: "ORGANIZE",
+            value: d,
+        });
     });
 
     revertTabsButton.addEventListener("click", async () => {
@@ -14,18 +22,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         await revertTabs(allTabs);
     });
 });
-
-// chrome.tabs.onActivated.addListener(async activeInfo => {
-//     if (activeInfo.tabId && activeInfo.windowId) {
-//         chrome.tabs.sendMessage(activeInfo.tabId, {
-//             type: "NEW",
-//             value: activeInfo.tabId,
-//         });
-
-//         const allTabs = await getAllTabs();
-//         chrome.tabs.move(activeInfo.tabId, { index: allTabs.length - 1 });
-//     }
-// });
 
 const organizeTabs = async (tabs) => {
     const oldTabs = JSON.parse(JSON.stringify(tabs));
@@ -46,14 +42,7 @@ const organizeTabs = async (tabs) => {
         await chrome.storage.sync.set({ 'oldTabsOrder': oldTabsOrder });
     }
 
-    const temp = []
-    for (const tab of tabs) {
-        if (tab.index !== oldTabsOrder[tab.id]) {
-            temp.push({ id: tab.id, index: tab.index });
-        }
-    }
-
-    return [sameTabOrder, oldTabsOrder, tabs, temp]
+    return tabs;
 };
 
 const revertTabs = async (tabs) => {
